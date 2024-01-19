@@ -1,28 +1,34 @@
-import type { User } from "@prisma/client";
-import type { LinksFunction, LoaderArgs } from "@remix-run/node";
+import type {
+  LinksFunction,
+  LoaderFunctionArgs,
+} from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Form, Link, Outlet, useLoaderData } from "@remix-run/react";
+import {
+  Form,
+  Link,
+  Outlet,
+  useLoaderData,
+} from "@remix-run/react";
 
+import stylesUrl from "~/styles/jokes.css";
 import { db } from "~/utils/db.server";
 import { getUser } from "~/utils/session.server";
-import stylesUrl from "~/styles/jokes.css";
 
-export const links: LinksFunction = () => {
-  return [{ rel: "stylesheet", href: stylesUrl }];
-};
+export const links: LinksFunction = () => [
+  { rel: "stylesheet", href: stylesUrl },
+];
 
-export const loader = async ({ request }: LoaderArgs) => {
+export const loader = async ({
+  request,
+}: LoaderFunctionArgs) => {
   const jokeListItems = await db.joke.findMany({
-    take: 5,
     orderBy: { createdAt: "desc" },
     select: { id: true, name: true },
+    take: 5,
   });
   const user = await getUser(request);
 
-  return json({
-    jokeListItems,
-    user,
-  });
+  return json({ jokeListItems, user });
 };
 
 export default function JokesRoute() {
@@ -33,7 +39,11 @@ export default function JokesRoute() {
       <header className="jokes-header">
         <div className="container">
           <h1 className="home-link">
-            <Link to="/" title="Remix Jokes" aria-label="Remix Jokes">
+            <Link
+              to="/"
+              title="Remix Jokes"
+              aria-label="Remix Jokes"
+            >
               <span className="logo">🤪</span>
               <span className="logo-medium">J🤪KES</span>
             </Link>
@@ -58,10 +68,10 @@ export default function JokesRoute() {
             <Link to=".">Get a random joke</Link>
             <p>Here are a few more jokes to check out:</p>
             <ul>
-              {data.jokeListItems.map((joke) => (
-                <li key={joke.id}>
-                  <Link to={joke.id} prefetch="intent">
-                    {joke.name}
+              {data.jokeListItems.map(({ id, name }) => (
+                <li key={id}>
+                  <Link prefetch="intent" to={id}>
+                    {name}
                   </Link>
                 </li>
               ))}
@@ -75,6 +85,13 @@ export default function JokesRoute() {
           </div>
         </div>
       </main>
+      <footer className="jokes-footer">
+        <div className="container">
+          <Link reloadDocument to="/jokes.rss">
+            RSS
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }

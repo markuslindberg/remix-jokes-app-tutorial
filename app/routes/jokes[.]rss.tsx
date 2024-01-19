@@ -1,4 +1,4 @@
-import type { LoaderArgs } from "@remix-run/node";
+import type { LoaderFunctionArgs } from "@remix-run/node";
 
 import { db } from "~/utils/db.server";
 
@@ -15,19 +15,24 @@ function escapeHtml(s: string) {
     .replace(/'/g, "&#039;");
 }
 
-export const loader = async ({ request }: LoaderArgs) => {
+export const loader = async ({
+  request,
+}: LoaderFunctionArgs) => {
   const jokes = await db.joke.findMany({
-    take: 100,
-    orderBy: { createdAt: "desc" },
     include: { jokester: { select: { username: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 100,
   });
 
   const host =
-    request.headers.get("X-Forwarded-Host") ?? request.headers.get("host");
+    request.headers.get("X-Forwarded-Host") ??
+    request.headers.get("host");
   if (!host) {
     throw new Error("Could not determine domain URL.");
   }
-  const protocol = host.includes("localhost") ? "http" : "https";
+  const protocol = host.includes("localhost")
+    ? "http"
+    : "https";
   const domain = `${protocol}://${host}`;
   const jokesUrl = `${domain}/jokes`;
 
@@ -44,7 +49,9 @@ export const loader = async ({ request }: LoaderArgs) => {
           .map((joke) =>
             `
             <item>
-              <title><![CDATA[${escapeCdata(joke.name)}]]></title>
+              <title><![CDATA[${escapeCdata(
+                joke.name
+              )}]]></title>
               <description><![CDATA[A funny joke called ${escapeHtml(
                 joke.name
               )}]]></description>
@@ -64,9 +71,13 @@ export const loader = async ({ request }: LoaderArgs) => {
 
   return new Response(rssString, {
     headers: {
-      "Cache-Control": `public, max-age=${60 * 10}, s-maxage=${60 * 60 * 24}`,
+      "Cache-Control": `public, max-age=${
+        60 * 10
+      }, s-maxage=${60 * 60 * 24}`,
       "Content-Type": "application/xml",
-      "Content-Length": String(Buffer.byteLength(rssString)),
+      "Content-Length": String(
+        Buffer.byteLength(rssString)
+      ),
     },
   });
 };

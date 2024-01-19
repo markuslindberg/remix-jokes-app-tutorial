@@ -1,19 +1,28 @@
-import type { ActionArgs, LoaderArgs } from "@remix-run/node";
+import type {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+} from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import {
   Form,
+  isRouteErrorResponse,
   Link,
   useActionData,
-  useCatch,
   useNavigation,
+  useRouteError,
 } from "@remix-run/react";
 
 import { JokeDisplay } from "~/components/joke";
 import { db } from "~/utils/db.server";
 import { badRequest } from "~/utils/request.server";
-import { getUserId, requireUserId } from "~/utils/session.server";
+import {
+  getUserId,
+  requireUserId,
+} from "~/utils/session.server";
 
-export const loader = async ({ request }: LoaderArgs) => {
+export const loader = async ({
+  request,
+}: LoaderFunctionArgs) => {
   const userId = await getUserId(request);
   if (!userId) {
     throw new Response("Unauthorized", { status: 401 });
@@ -23,34 +32,39 @@ export const loader = async ({ request }: LoaderArgs) => {
 
 function validateJokeContent(content: string) {
   if (content.length < 10) {
-    return `That joke is too short`;
+    return "That joke is too short";
   }
 }
 
 function validateJokeName(name: string) {
   if (name.length < 3) {
-    return `That joke's name is too short`;
+    return "That joke's name is too short";
   }
 }
 
-export const action = async ({ request }: ActionArgs) => {
+export const action = async ({
+  request,
+}: ActionFunctionArgs) => {
   const userId = await requireUserId(request);
   const form = await request.formData();
-  const name = form.get("name");
   const content = form.get("content");
-  if (typeof name !== "string" || typeof content !== "string") {
+  const name = form.get("name");
+  if (
+    typeof content !== "string" ||
+    typeof name !== "string"
+  ) {
     return badRequest({
       fieldErrors: null,
       fields: null,
-      formError: `Form not submitted correctly.`,
+      formError: "Form not submitted correctly.",
     });
   }
 
   const fieldErrors = {
-    name: validateJokeName(name),
     content: validateJokeContent(content),
+    name: validateJokeName(name),
   };
-  const fields = { name, content };
+  const fields = { content, name };
   if (Object.values(fieldErrors).some(Boolean)) {
     return badRequest({
       fieldErrors,
@@ -70,19 +84,19 @@ export default function NewJokeRoute() {
   const navigation = useNavigation();
 
   if (navigation.formData) {
-    const name = navigation.formData.get("name");
     const content = navigation.formData.get("content");
+    const name = navigation.formData.get("name");
     if (
-      typeof name === "string" &&
       typeof content === "string" &&
+      typeof name === "string" &&
       !validateJokeContent(content) &&
       !validateJokeName(name)
     ) {
       return (
         <JokeDisplay
-          joke={{ name, content }}
-          isOwner={true}
           canDelete={false}
+          isOwner={true}
+          joke={{ name, content }}
         />
       );
     }
@@ -96,17 +110,25 @@ export default function NewJokeRoute() {
           <label>
             Name:{" "}
             <input
-              type="text"
               defaultValue={actionData?.fields?.name}
               name="name"
-              aria-invalid={Boolean(actionData?.fieldErrors?.name) || undefined}
+              type="text"
+              aria-invalid={Boolean(
+                actionData?.fieldErrors?.name
+              )}
               aria-errormessage={
-                actionData?.fieldErrors?.name ? "name-error" : undefined
+                actionData?.fieldErrors?.name
+                  ? "name-error"
+                  : undefined
               }
             />
           </label>
           {actionData?.fieldErrors?.name ? (
-            <p className="form-validation-error" role="alert" id="name-error">
+            <p
+              className="form-validation-error"
+              id="name-error"
+              role="alert"
+            >
               {actionData.fieldErrors.name}
             </p>
           ) : null}
@@ -117,19 +139,21 @@ export default function NewJokeRoute() {
             <textarea
               defaultValue={actionData?.fields?.content}
               name="content"
-              aria-invalid={
-                Boolean(actionData?.fieldErrors?.content) || undefined
-              }
+              aria-invalid={Boolean(
+                actionData?.fieldErrors?.content
+              )}
               aria-errormessage={
-                actionData?.fieldErrors?.content ? "content-error" : undefined
+                actionData?.fieldErrors?.content
+                  ? "content-error"
+                  : undefined
               }
             />
           </label>
           {actionData?.fieldErrors?.content ? (
             <p
               className="form-validation-error"
-              role="alert"
               id="content-error"
+              role="alert"
             >
               {actionData.fieldErrors.content}
             </p>
@@ -137,7 +161,10 @@ export default function NewJokeRoute() {
         </div>
         <div>
           {actionData?.formError ? (
-            <p className="form-validation-error" role="alert">
+            <p
+              className="form-validation-error"
+              role="alert"
+            >
               {actionData.formError}
             </p>
           ) : null}
@@ -150,10 +177,11 @@ export default function NewJokeRoute() {
   );
 }
 
-export function CatchBoundary() {
-  const caught = useCatch();
+export function ErrorBoundary() {
+  const error = useRouteError();
+  console.error(error);
 
-  if (caught.status === 401) {
+  if (isRouteErrorResponse(error) && error.status === 401) {
     return (
       <div className="error-container">
         <p>You must be logged in to create a joke.</p>
@@ -161,9 +189,7 @@ export function CatchBoundary() {
       </div>
     );
   }
-}
 
-export function ErrorBoundary() {
   return (
     <div className="error-container">
       Something unexpected went wrong. Sorry about that.
